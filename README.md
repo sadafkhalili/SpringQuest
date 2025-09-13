@@ -1,3 +1,4 @@
+
 The problem space is an n×n two-dimensional grid where n ≤ 6.
 The starting cell is always at (1, 1).
 From each cell, movement is allowed in eight possible directions.
