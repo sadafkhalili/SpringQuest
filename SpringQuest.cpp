@@ -1,151 +1,140 @@
-#include <iostream>
-#include <stack>
-#include <random>
-using namespace std;
+import random
+from collections import deque
 
-pair<int, int> start = {1, 1};
-pair<int, int> finish;
-const int MAX_N = 1000;
-int plane[MAX_N][MAX_N];
-bool savevisited[MAX_N][MAX_N];
-int n;
+MAX_N = 100
+grid = [[0] * (MAX_N + 1) for _ in range(MAX_N + 1)]
+visited = [[False] * (MAX_N + 1) for _ in range(MAX_N + 1)]
+n = 0
+start = (1, 1)
+goal = (0, 0)
+spring = (-1, -1)
+spring_steps = 0
+spring_direction = 0
+path = [(0, 0)] * (MAX_N * MAX_N)
+path_length = 0
 
-pair<int, int> spring = {-1, -1};
-int springSteps;
-int side;
-pair<int, int> path[MAX_N * MAX_N];
-int length = 0;
+# جهت‌های حرکت (۸ جهت شامل جهات قطری)
+dx = [-1, -1, -1, 0, 1, 1, 1, 0]
+dy = [-1, 0, 1, 1, 1, 0, -1, -1]
 
-int dx[] = {-1, -1, -1, 0, 1, 1, 1, 0};
-int dy[] = {-1, 0, 1, 1, 1, 0, -1, -1};
+def random_int(min_val, max_val):
+    return random.randint(min_val, max_val)
 
-int randomInt(int min, int MAX_N) {
-    random_device rd;
-    mt19937 gen(rd());
-    uniform_int_distribution<> dis(min, MAX_N);
-    return dis(gen);
-}
+def generate_grid():
+    global goal, spring, spring_steps, spring_direction
+    
+    # تولید موقعیت هدف
+    goal = (random_int(1, n), random_int(1, n))
+    
+    # تولید موانع
+    p = random_int(1, n)  # تعداد موانع
+    for _ in range(p):
+        x = random_int(1, n)
+        y = random_int(1, n)
+        if (x != start[0] or y != start[1]) and (x != goal[0] or y != goal[1]):
+            grid[x][y] = -1  # علامتگذاری مانع
+    
+    # تولید فنر
+    if random_int(1, 100) <= 30:  # با احتمال 30 درصد
+        spring = (random_int(1, n), random_int(1, n))
+        spring_steps = random_int(1, n // 2)  # تعداد گامها
+        spring_direction = random_int(0, 7)  # جهت حرکت (۸ جهت)
+        if spring != start and spring != goal:
+            grid[spring[0]][spring[1]] = 4  # علامت فنر
+    
+    # تولید تونل
+    tunnel = (random_int(1, n), random_int(1, n))
+    if tunnel != start and tunnel != goal:
+        grid[tunnel[0]][tunnel[1]] = 5  # علامت تونل
 
-void generateplane() {
-    finish.first = randomInt(1, n);
-    finish.second = randomInt(1, n);
+def is_valid(x, y):
+    return (1 <= x <= n and 
+            1 <= y <= n and 
+            grid[x][y] != -1 and 
+            not visited[x][y])
 
-    int p = randomInt(1, n);
-    for (int i = 0; i < p; i++) {
-        int x = randomInt(1, n);
-        int y = randomInt(1, n);
-        if ((x != start.first || y != start.second) && (x != finish.first || y != finish.second)) {
-            plane[x][y] = -1;
-        }
-    }
+def find_path():
+    global path_length
+    
+    s = deque()
+    s.append(start)
+    
+    while s:
+        x, y = s.pop()
+        
+        # ثبت موقعیت فعلی در مسیر
+        path[path_length] = (x, y)
+        path_length += 1
+        
+        if x == goal[0] and y == goal[1]:
+            return True  # مسیر پیدا شد
+        
+        visited[x][y] = True
+        
+        # spring
+        if spring[0] == x and spring[1] == y:
+            for i in range(spring_steps):
+                x += dx[spring_direction]
+                y += dy[spring_direction]
+                if not is_valid(x, y):
+                    break
+        
+        # Tunnel
+        if grid[x][y] == 5:
+            for i in range(3):
+                if path_length > 0:
+                    path_length -= 1
+            if path_length > 0:
+                x, y = path[path_length - 1]
+        
+        for i in range(8):
+            nx = x + dx[i]
+            ny = y + dy[i]
+            if is_valid(nx, ny):
+                s.append((nx, ny))
+    
+    return False
 
-    if (randomInt(1, 100) <= 30) {
-        spring = {randomInt(1, n), randomInt(1, n)};
-        springSteps = randomInt(1, n / 2);
-        side = randomInt(0, 7);
-        if (spring != start && spring != finish) {
-            plane[spring.first][spring.second] = 4;
-        }
-    }
+def print_grid():
+    print("Grid: ")
+    for i in range(1, n + 1):
+        for j in range(1, n + 1):
+            if i == start[0] and j == start[1]:
+                print("S", end="")
+            elif i == goal[0] and j == goal[1]:
+                print("G", end="")
+            elif grid[i][j] == 4:
+                print("F", end="")
+            elif grid[i][j] == 5:
+                print("T", end="")
+            else:
+                print("*", end="")
+        print()
 
-    pair<int, int> tunnel = {randomInt(1, n), randomInt(1, n)};
-    if (tunnel != start && tunnel != finish) {
-        plane[tunnel.first][tunnel.second] = 5;
-    }
-}
+def print_path():
+    print(" [", end="")
+    for i in range(path_length):
+        print(f"({path[i][0]}, {path[i][1]})", end="")
+        if i != path_length - 1:
+            print(" --> ", end="")
+    print("]")
 
-bool isValid(int x, int y) {
-    return x >= 1 && x <= n && y >= 1 && y <= n && plane[x][y] != -1 && !savevisited[x][y];
-}
+def main():
+    global n
+    
+    n = int(input("Enter n: "))
+    if n < 6:
+        print("It must be at least 6.")
+        return
+    
+    generate_grid()
+    print_grid()
+    
+    if find_path():
+        print("Path Found!")
+        print_path()
 
-bool findPath() {
-    stack<pair<int, int>> s;
-    s.push(start);
+if __name__ == "__main__":
+    main()
 
-    while (!s.empty()) {
-        auto [x, y] = s.top();
-        s.pop();
-
-        path[length++] = {x, y};
-
-        if (x == finish.first && y == finish.second) {
-            return true;
-        }
-
-        savevisited[x][y] = true;
-
-        if (spring.first == x && spring.second == y) {
-            for (int i = 0; i < springSteps; i++) {
-                x += dx[side];
-                y += dy[side];
-                if (!isValid(x, y)) break;
-            }
-        }
-
-        if (plane[x][y] == 5) {
-            for (int i = 0; i < 3; i++) {
-                if (length > 0) length--;
-            }
-            if (length > 0) {
-                x = path[length - 1].first;
-                y = path[length - 1].second;
-            }
-        }
-
-        for (int i = 0; i < 8; i++) {
-            int nx = x + dx[i];
-            int ny = y + dy[i];
-            if (isValid(nx, ny)) {
-                s.push({nx, ny});
-            }
-        }
-    }
-
-    return false;
-}
-
-void printplane() {
-    cout << "plane: " << endl;
-    for (int i = 1; i <= n; i++) {
-        for (int j = 1; j <= n; j++) {
-            if (i == start.first && j == start.second)
-                cout << "S";
-            else if (i == finish.first && j == finish.second)
-                cout << "G";
-            else if (plane[i][j] == 4)
-                cout << "F";
-            else if (plane[i][j] == 5)
-                cout << "T";
-            else
-                cout << "*";
-        }
-        cout << endl;
-    }
-}
-
-void printPath() {
-    cout << " [";
-    for (int i = 0; i < length; ++i) {
-        cout << "(" << path[i].first << ", " << path[i].second << ")";
-        if (i != length - 1) cout << " --> ";
-    }
-    cout << "]" << endl;
-}
-
-int main() {
-    cout << "Enter n: ";
-    cin >> n;
-    if (n < 6) {
-        cout << "It must be at least 6." << endl;
-        return 0;
-    }
-
-    generateplane();
-    printplane();
-
-    if (findPath()) {
-        cout << "Path Found!" << endl;
-        printPath();
-    }
-}
 
